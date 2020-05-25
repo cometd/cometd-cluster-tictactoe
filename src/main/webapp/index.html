@@ -25,7 +25,54 @@
 
 <h1 id="title">CometD Cluster Tic-Tac-Toe</h1>
 
+<div id="welcome" class="tile is-ancestor">
+  <div class="tile is-parent">
+    <div class="tile is-child">
+      <label for="name">NickName:</label>
+      <input id="name" value=""/>
+      <button id="play">Play!</button>
+    </div>
+  </div>
+</div>
 
+<div id="main" class="tile is-ancestor">
+  <div class="tile is-vertical">
+    <div class="tile is-parent">
+      <div id="status" class="tile is-child is-11">&nbsp;</div>
+      <div class="tile is-child">
+        <button id="new_game">New&nbsp;Game</button>
+      </div>
+    </div>
+    <div class="tile">
+      <div class="tile is-vertical is-3">
+        <div class="tile is-parent">
+          <div id="game-list" class="tile is-child"></div>
+        </div>
+      </div>
+      <div id="board" class="tile is-vertical is-parent">
+        <div id="opponent" class="tile is-child">&nbsp;</div>
+        <div id="squares" class="tile is-vertical is-child">
+          <div id="row0" class="tile is-parent">
+            <div id="sq0" class="tile is-child square">&nbsp;</div>
+            <div id="sq1" class="tile is-child square"></div>
+            <div id="sq2" class="tile is-child square"></div>
+          </div>
+          <div id="row1" class="tile is-parent row">
+            <div id="sq3" class="tile is-child square">&nbsp;</div>
+            <div id="sq4" class="tile is-child square"></div>
+            <div id="sq5" class="tile is-child square"></div>
+          </div>
+          <div id="row2" class="tile is-parent row">
+            <div id="sq6" class="tile is-child square">&nbsp;</div>
+            <div id="sq7" class="tile is-child square"></div>
+            <div id="sq8" class="tile is-child square"></div>
+          </div>
+        </div>
+        <div id="player" class="tile is-child">&nbsp;</div>
+      </div>
+    </div>
+  </div>
+</div>
 
 </body>
 </html>

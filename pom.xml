@@ -9,34 +9,11 @@
   <version>1.0.0-SNAPSHOT</version>
   <packaging>war</packaging>
 
-<!--
-  <profiles>
-    <profile>
-      <activation>
-        <activeByDefault>true</activeByDefault>
-      </activation>
-      <id>A</id>
-      <properties>
-        <port>8080</port>
-        <node>A</node>
-      </properties>
-    </profile>
-    <profile>
-      <id>B</id>
-      <properties>
-        <port>9090</port>
-        <node>B</node>
-      </properties>
-    </profile>
-  </profiles>
--->
-
   <properties>
     <project.build.sourceEncoding>UTF-8</project.build.sourceEncoding>
     <jetty-version>9.4.29.v20200521</jetty-version>
     <cometd-version>5.0.0</cometd-version>
     <slf4j-version>1.7.30</slf4j-version>
-    <!--<oort-url>http://localhost:${port}/cometd</oort-url>-->
   </properties>
 
   <build>
@@ -58,15 +35,12 @@
         <groupId>org.eclipse.jetty</groupId>
         <artifactId>jetty-maven-plugin</artifactId>
         <configuration>
-          <requestLog implementation="org.eclipse.jetty.server.Slf4jRequestLog" />
           <httpConnector>
             <port>8080</port>
           </httpConnector>
           <webApp>
             <contextPath>/</contextPath>
           </webApp>
-
-<!--          <jettyXml>src/main/config/etc/jetty-jmx.xml</jettyXml>-->
         </configuration>
       </plugin>
       <plugin>

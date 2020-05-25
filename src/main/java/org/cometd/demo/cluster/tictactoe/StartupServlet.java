@@ -24,6 +24,7 @@ import javax.servlet.UnavailableException;
 
 import org.cometd.annotation.server.ServerAnnotationProcessor;
 import org.cometd.bayeux.server.BayeuxServer;
+import org.cometd.demo.cluster.tictactoe.service.GamesService;
 import org.cometd.oort.Oort;
 import org.cometd.oort.Seti;
 
@@ -41,6 +42,10 @@ public class StartupServlet extends GenericServlet {
             // Instead of using CometD's annotation servlet (that can only instantiate parameterless services)
             // we create and use a ServerAnnotationProcessor manually.
             ServerAnnotationProcessor processor = new ServerAnnotationProcessor(bayeuxServer, oort, seti);
+            GamesService gamesService = new GamesService();
+            processor.process(gamesService);
+
+
             // TODO
         } catch (Exception x) {
             throw new ServletException(x);
