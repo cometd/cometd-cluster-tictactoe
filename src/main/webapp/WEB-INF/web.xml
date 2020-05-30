@@ -28,7 +28,7 @@
     <servlet-name>cometd</servlet-name>
     <servlet-class>org.cometd.annotation.server.AnnotationCometDServlet</servlet-class>
     <init-param>
-      <param-name>cometdURLMapping</param-name>
+      <param-name>ws.cometdURLMapping</param-name>
       <param-value>/cometd/*</param-value>
     </init-param>
     <init-param>
@@ -45,14 +45,10 @@
 
   <servlet>
     <servlet-name>oort</servlet-name>
-    <servlet-class>org.cometd.oort.OortMulticastConfigServlet</servlet-class>
-    <init-param>
-      <param-name>oort.url</param-name>
-      <param-value>${oort-url}</param-value>
-    </init-param>
+    <servlet-class>org.cometd.demo.cluster.tictactoe.SystemPropertyOortConfigServlet</servlet-class>
     <init-param>
       <param-name>oort.secret</param-name>
-      <param-value>oort_objects</param-value>
+      <param-value>tic_tac_toe</param-value>
     </init-param>
     <load-on-startup>2</load-on-startup>
   </servlet>

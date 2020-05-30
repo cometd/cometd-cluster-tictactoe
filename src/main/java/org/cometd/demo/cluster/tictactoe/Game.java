@@ -39,18 +39,25 @@ public class Game implements JSON.Convertible {
         this.owner = owner;
     }
 
+    public String id() {
+        return id;
+    }
+
+    public String owner() {
+        return owner;
+    }
+
+    public String opponent() {
+        return opponent;
+    }
+
     public void opponent(String opponent) {
         this.opponent = opponent;
     }
 
-    public boolean move(int square) {
-        Move move = new Move();
-        move.gameId = id;
-        move.square = square;
-        move.sequence = moves.size();
-
+    public boolean move(Move move) {
         boolean valid = moves.stream()
-                .filter(m -> m.square == square)
+                .filter(m -> m.square == move.square)
                 .findAny()
                 .orElse(null) == null;
 
@@ -79,10 +86,10 @@ public class Game implements JSON.Convertible {
             return board.get(0) == 0 ? owner : opponent;
         }
         if (strike(board, 3, 4, 5) || strike(board, 1, 4, 7) || strike(board, 2, 4, 6)) {
-            return board.get(0) == 0 ? owner : opponent;
+            return board.get(4) == 0 ? owner : opponent;
         }
         if (strike(board, 6, 7, 8) || strike(board, 2, 5, 8)) {
-            return board.get(0) == 0 ? owner : opponent;
+            return board.get(8) == 0 ? owner : opponent;
         }
         return null;
     }
@@ -103,19 +110,33 @@ public class Game implements JSON.Convertible {
 
     @Override
     public void toJSON(JSON.Output out) {
+        out.addClass(Game.class);
         out.add("id", id);
         out.add("owner", owner);
         out.add("opponent", opponent);
         out.add("winner", winner);
-        Map<String, String> squares = moves.stream()
-                .collect(Collectors.toMap(move -> String.valueOf(move.square), move -> move.sequence % 2 == 0 ? "X" : "O"));
-        out.add("squares", squares);
+        out.add("moves", moves);
     }
 
     @Override
     public void fromJSON(Map object) {
-        // TODO: this is probably needed when moving the Game in the cluster.
-        throw new UnsupportedOperationException();
+        this.id = (String)object.get("id");
+        this.owner = (String)object.get("owner");
+        this.opponent = (String)object.get("opponent");
+        this.winner = (String)object.get("winner");
+        Object jsonMoves = object.get("moves");
+        if (jsonMoves instanceof List) {
+            @SuppressWarnings("unchecked")
+            List<Move> moves = (List<Move>)jsonMoves;
+            this.moves.addAll(moves);
+        } else if (jsonMoves instanceof Object[]) {
+            Object[] moves = (Object[])jsonMoves;
+            for (Object move : moves) {
+                this.moves.add((Move)move);
+            }
+        } else {
+            throw new IllegalArgumentException();
+        }
     }
 
     @Override
@@ -123,10 +144,25 @@ public class Game implements JSON.Convertible {
         return String.format("%s@%x[<#%s>%s|%s=>%s]%s", getClass().getSimpleName(), hashCode(), id, owner, opponent, winner, moves);
     }
 
-    public static class Move {
-        private String gameId; // unique across cluster
-        private int square; // which square
+    public static class Move implements JSON.Convertible {
+        public String gameId; // unique across cluster
+        public int square; // which square
         private int sequence; // within the game
+
+        @Override
+        public void toJSON(JSON.Output out) {
+            out.addClass(Move.class);
+            out.add("gameId", gameId);
+            out.add("square", square);
+            out.add("sequence", sequence);
+        }
+
+        @Override
+        public void fromJSON(Map object) {
+            this.gameId = (String)object.get("gameId");
+            this.square = ((Number)object.get("square")).intValue();
+            this.sequence = ((Number)object.get("sequence")).intValue();
+        }
 
         @Override
         public String toString() {

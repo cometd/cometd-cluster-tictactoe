@@ -34,9 +34,13 @@ require({
                     model.play(player);
                 }
             });
-            const newGameButton = $('#new_game');
+            const newGameButton = $('#newGame');
             newGameButton.on('click', () => {
                 model.newGame()
+            });
+            const migrateButton = $('#migrate');
+            migrateButton.on('click', () => {
+                model.migrate();
             });
             for (let i = 0; i < 9; ++i) {
                 $('#sq' + i).on('click', () => {
@@ -64,15 +68,22 @@ require({
                     cometd.batch(() => {
                         cometd.subscribe('/games', message => model.receiveGameList(message));
                         cometd.subscribe('/service/games/challenge', message => model.receiveGameChallenge(message));
-                        cometd.subscribe('/service/games/move', message => model.receiveMove(message));
-                        cometd.subscribe('/service/games/result', message => model.receiveResult(message));
+                        cometd.subscribe('/games/move', message => model.receiveMove(message));
+                        cometd.subscribe('/games/result', message => model.receiveResult(message));
+                        cometd.subscribe('/service/games/migrate', message => model.receiveMigrate(message));
                     });
                     const player = sessionStorage.getItem('player');
                     if (player) {
                         model.play(player);
                     } else {
-                        $('#welcome').show();
-                        playerField.focus();
+                        const params = new URLSearchParams(location.search);
+                        const player = params.get('player');
+                        if (player) {
+                            model.play(player);
+                        } else {
+                            $('#welcome').show();
+                            playerField.focus();
+                        }
                     }
                 }
             });
@@ -88,14 +99,12 @@ require({
                         sessionStorage.setItem('player', player);
                         $('#welcome').hide();
                         $('#main').show();
-                        const gameId = sessionStorage.getItem('gameId');
-                        this._debug('resuming game', gameId);
-                        if (gameId) {
-                            this.getGame(gameId);
-                            // TODO: figure out if it's my turn and tell the user
-                        } else {
-                            this._status('start a new game!');
-                        }
+                        this._debug('resuming game for', player);
+                        this.findGame(player, game => {
+                            if (!game) {
+                                this._status('start a new game!');
+                            }
+                        });
                     } else {
                         // TODO: show error.
                     }
@@ -103,6 +112,7 @@ require({
             }
 
             newGame() {
+                $('#newGame').prop('disabled', true);
                 cometd.remoteCall('/games/new', {}, newGameReply => {
                     if (newGameReply.successful) {
                         const game = newGameReply.data;
@@ -113,8 +123,14 @@ require({
                 });
             }
 
+            _setGame(game) {
+                this._game = game;
+                game.squares = this._squares(game);
+            }
+
             sendGameChallenge(game) {
                 this._debug('sending challenge to', game.owner);
+                $('#newGame').prop('disabled', true);
                 cometd.publish('/service/games/challenge', {
                     gameId: game.id,
                     type: 'request'
@@ -151,13 +167,15 @@ require({
                 const games = message.data;
                 this._debug('received games list', games);
 
-                const gameList = $('#game-list');
+                const gameList = $('#gameList');
                 gameList.empty();
 
+                const player = sessionStorage.getItem('player');
                 $.each(games, (i, game) => {
                     // Skip my own game.
-                    if (!this._game || this._game.id !== game.id) {
-                        const line = $('<div><span>Play against <span class="opponent">' + game.owner + '</span></span></div>');
+                    const owner = game.owner;
+                    if (player !== owner) {
+                        const line = $('<div><span>Play against <span class="opponent">' + owner + '</span></span></div>');
                         line.on('click', () => this.sendGameChallenge(game));
                         gameList.append(line);
                     }
@@ -170,46 +188,42 @@ require({
                 status.append($('<span>' + text + '</span>'));
             }
 
-            getGame(gameId) {
-                this._debug('getting game', gameId);
-                cometd.remoteCall('/games/get', {
-                    gameId: gameId
+            findGame(player, callback) {
+                this._debug('finding game for', player);
+                cometd.remoteCall('/games/find', {
+                    player: player
                 }, getGameReply => {
                     if (getGameReply.successful) {
                         const game = getGameReply.data;
-                        this._debug('got game', game);
+                        this._debug('found game', game);
                         this._setGame(game);
                         this._drawBoard(game);
+                        callback(game);
                     } else {
-                        sessionStorage.removeItem('gameId');
+                        this._debug('no game found');
                         this._status('start a new game!');
+                        callback();
                     }
                 });
-            }
-
-            _setGame(game) {
-                this._game = game;
-                sessionStorage.setItem('gameId', game.id);
             }
 
             sendMove(index) {
                 const game = this._game;
                 if (game && game.opponent) {
                     const player = sessionStorage.getItem('player');
-                    const myGame = game.owner === player;
                     const myTurn = this._turn(player, game);
                     if (myTurn) {
                         const key = index.toString();
                         if (!game.squares[key]) {
-                            const square = $('#sq' + index);
-                            const value = myGame ? 'X' : 'O';
-                            game.squares[key] = value;
-                            square.text(value);
-                            this._debug('send move', value, 'in', index);
-                            cometd.publish('/service/games/move', {
+                            // The square is empty.
+                            const sequence = game.moves.length;
+                            const move = {
                                 gameId: game.id,
-                                square: index
-                            });
+                                square: index,
+                                sequence: sequence
+                            };
+                            this._debug('send move', move);
+                            cometd.publish('/service/games/move', move);
                         }
                     }
                 }
@@ -217,13 +231,14 @@ require({
 
             receiveMove(message) {
                 const game = this._game;
-                const index = message.data.square;
-                const value = Object.keys(game.squares).length % 2 === 0 ? 'X' : 'O';
+                const move = message.data;
+                const index = move.square;
+                const value = game.moves.length % 2 === 0 ? 'X' : 'O';
                 this._debug('received move', index, '=', value);
+                game.moves.push(move);
                 const key = index.toString();
                 game.squares[key] = value;
-                const square = $('#sq' + index);
-                square.text(value);
+                this._drawBoard(game);
             }
 
             receiveResult(message) {
@@ -241,6 +256,20 @@ require({
                     this._status('the game is a draw');
                 }
                 // TODO: draw the strike across the squares.
+                $('#newGame').prop('disabled', false);
+            }
+
+            migrate() {
+                // Migrate after a random time between 2 and 12 seconds.
+                setTimeout(() => {
+                    cometd.publish('/service/games/migrate', {});
+                }, (Math.floor(Math.random() * 10) + 2) * 1000);
+            }
+
+            receiveMigrate(message) {
+                const url = message.data;
+                this._debug('Moving to', url)
+                location = url;
             }
 
             _drawBoard(game) {
@@ -274,11 +303,19 @@ require({
 
             _turn(player, game) {
                 const myGame = game.owner === player;
-                const moves = Object.keys(game.squares).length;
+                const moves = game.moves.length;
                 if (myGame && moves % 2 === 0) {
                     return true;
                 }
                 return !myGame && moves % 2 !== 0;
+            }
+
+            _squares(game) {
+                const result = {};
+                for (const move of game.moves) {
+                    result[move.square.toString()] = move.sequence % 2 === 0 ? 'X' : 'O';
+                }
+                return result;
             }
 
             _debug() {
